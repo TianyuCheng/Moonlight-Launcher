@@ -12,6 +12,7 @@ FetchContent_GetProperties(cmrc)
 
 # build cmrc when needed
 if(NOT cmrc_POPULATED)
+  set(CMAKE_WARN_DEPRECATED FALSE)
   set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
   FetchContent_MakeAvailable(cmrc)
 endif()

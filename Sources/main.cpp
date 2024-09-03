@@ -1,5 +1,6 @@
 #include <sstream>
 #include <imgui.h>
+#include "font.h"
 #include "display.h"
 #include "application.h"
 
@@ -88,12 +89,12 @@ void MyApp::render_pages()
 
     if (ImGui::BeginTabBar("Resolutions")) {
 
-        if (ImGui::BeginTabItem("Presets", nullptr, tab_index == 0 ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None)) {
+        if (ImGui::BeginTabItem(ICON_FA_GIFT, nullptr, tab_index == 0 ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None)) {
             render_displays("##Presets", preset_display_settings);
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Supported", nullptr, tab_index == 1 ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None)) {
+        if (ImGui::BeginTabItem(ICON_FA_LIST_UL, nullptr, tab_index == 1 ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None)) {
             render_displays("##Supported", supported_display_settings);
             ImGui::EndTabItem();
         }
@@ -132,7 +133,7 @@ void MyApp::render_displays(const char* name, const std::vector<DisplaySettings>
             const bool  selected = sel_index == i;
 
             std::stringstream ss;
-            ss << settings.width << "x" << settings.height << "@" << settings.frequency;
+            ss << ICON_FA_DESKTOP << " " << settings.width << "x" << settings.height << "@" << settings.frequency;
             if (!settings.name.empty())
                 ss << " (" << settings.name << ")";
 
@@ -146,7 +147,6 @@ void MyApp::render_displays(const char* name, const std::vector<DisplaySettings>
                 ImGui::SetScrollFromPosY(ImGui::GetCursorStartPos().y + ImGui::GetCursorPosY(), 0.5f);
             }
         }
-
         ImGui::ListBoxFooter();
     }
     ImGui::PopItemWidth();
@@ -170,7 +170,11 @@ void MyApp::render_displays(const char* name, const std::vector<DisplaySettings>
     }
 }
 
+#ifdef USE_PLATFORM_WINDOWS
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+#else
 int main(int argc, const char* argv[])
+#endif
 {
     if (!glfwInit()) {
         spdlog::error("[GLFW] failed to initialize GLFW!");

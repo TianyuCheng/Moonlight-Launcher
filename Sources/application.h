@@ -6,10 +6,6 @@
 
 using uint = uint32_t;
 
-struct ApplicationDesc
-{
-};
-
 struct Application
 {
     virtual void run();

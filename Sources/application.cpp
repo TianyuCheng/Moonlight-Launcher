@@ -3,7 +3,7 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-
+#include "font.h"
 #include "application.h"
 
 // Register the resource library
@@ -34,8 +34,6 @@ static void on_scale(GLFWwindow* window, float xscale, float yscale)
     ImGuiIO& io = ImGui::GetIO();
 
     io.DisplayFramebufferScale = ImVec2(xscale, yscale);
-
-    static_cast<Application*>(glfwGetWindowUserPointer(window))->load_fonts();
 }
 
 static void on_error(int error, const char* description)
@@ -44,9 +42,6 @@ static void on_error(int error, const char* description)
 }
 
 // ---------------------------------------------------------------------------
-
-#define FONT_FILE "Roboto-Regular.ttf"
-#define FONT_SIZE 48.0f
 
 void Application::run()
 {
@@ -135,10 +130,12 @@ void Application::setup()
 
     // scale
     glfwGetWindowContentScale(window, &xscale, &yscale);
-    on_scale(window, xscale, yscale);
 
     // mouse
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    // fonts
+    load_fonts();
 
     // UI theme
     theme();
@@ -209,15 +206,36 @@ void Application::gamepad()
 
 void Application::load_fonts()
 {
-    // NOTE: fonts will be deleted by ImGui
-    auto  fs   = cmrc::fonts::get_filesystem();
-    auto  font = fs.open(FONT_FILE);
-    char* data = new char[font.size()];
-    std::memcpy(data, font.begin(), font.size());
+    // for icon fonts
+    static const ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0}; // Will not be copied by AddFont* so keep in scope.
 
-    // reload font when resized
+    ImFontConfig config;
+    config.OversampleH          = 2;
+    config.OversampleV          = 2;
+    config.GlyphExtraSpacing.x  = 0.0f;
+    config.FontDataOwnedByAtlas = false;
+
+    ImFontConfig main_cfg = config;
+    main_cfg.MergeMode    = false;
+
+    ImFontConfig icon_cfg     = config;
+    icon_cfg.MergeMode        = true;
+    icon_cfg.GlyphMinAdvanceX = ICON_FONT_SIZE * xscale;
+
+    auto fs = cmrc::fonts::get_filesystem();
+
+    auto  text_font = fs.open(TEXT_FONT_FILE);
+    void* text_data = (char*)text_font.begin();
+
+    auto  icon_font = fs.open(ICON_FONT_FILE);
+    void* icon_data = (char*)icon_font.begin();
+    spdlog::info("icon font size: ", icon_font.size());
+
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->Clear();
-    io.Fonts->AddFontFromMemoryTTF((void*)data, font.size(), FONT_SIZE * xscale);
+    io.Fonts->AddFontFromMemoryTTF(text_data, text_font.size(), TEXT_FONT_SIZE * xscale, &main_cfg, io.Fonts->GetGlyphRangesDefault());
+    io.Fonts->AddFontFromMemoryTTF(icon_data, icon_font.size(), ICON_FONT_SIZE * xscale, &icon_cfg, icons_ranges);
+    io.Fonts->Build();
+
     ImGui_ImplOpenGL3_CreateFontsTexture();
 }
