@@ -31,16 +31,29 @@ struct MyApp : public Application
     bool is_prev_tab_pressed();
     bool is_exit_pressed();
 
-    void render_pages();
+    void render_tabs();
+    void render_vtabs();
+    void render_tab_button(const char* label, int tab_index, int& selected_tab);
     void render_displays(const char* name, const std::vector<DisplaySettings>& display_settings);
 
     std::vector<DisplaySettings> preset_display_settings{};
     std::vector<DisplaySettings> supported_display_settings{};
+
+    int tab_index = 0;
+    int tab_count = 2;
 };
 
 void MyApp::tick()
 {
-    render_pages();
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoResize;
+    ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+    ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+    ImGui::Begin("Moonlight Launcher", 0, flags);
+    {
+        render_vtabs();
+    }
+    ImGui::End();
+
     glfwFocusWindow(window);
 }
 
@@ -76,31 +89,28 @@ bool MyApp::is_exit_pressed()
     return ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_GamepadStart));
 }
 
-void MyApp::render_pages()
+void MyApp::render_vtabs()
 {
-    static int tab_index = 0;
-    static int tab_count = 2;
-
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoResize;
-
-    ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
-    ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
-    ImGui::Begin("Windows Desktop Resizer", 0, flags);
-
-    if (ImGui::BeginTabBar("Resolutions")) {
-
-        if (ImGui::BeginTabItem(ICON_FA_GIFT, nullptr, tab_index == 0 ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None)) {
-            render_displays("##Presets", preset_display_settings);
-            ImGui::EndTabItem();
-        }
-
-        if (ImGui::BeginTabItem(ICON_FA_LIST_UL, nullptr, tab_index == 1 ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None)) {
-            render_displays("##Supported", supported_display_settings);
-            ImGui::EndTabItem();
-        }
-
-        ImGui::EndTabBar();
+    ImGui::BeginChild("Tab Buttons", ImVec2(150, 0), true);
+    {
+        render_tab_button(ICON_FA_BOOKMARK, 0, tab_index);
+        render_tab_button(ICON_FA_LIST, 1, tab_index);
     }
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+
+    ImGui::BeginChild("Tab Content", ImVec2(0, 0), true);
+    {
+        // clang-format off
+        switch (tab_index)
+        {
+            case 0: render_displays("##Presets", preset_display_settings);      break;
+            case 1: render_displays("##Supported", supported_display_settings); break;
+        }
+        // clang-format on
+    }
+    ImGui::EndChild();
 
     // next tab
     if (is_next_tab_pressed()) {
@@ -115,8 +125,33 @@ void MyApp::render_pages()
     if (is_exit_pressed()) {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
+}
 
-    ImGui::End();
+void MyApp::render_tab_button(const char* label, int tab_index, int& selected_tab)
+{
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+
+    // adjust selectable padding
+    ImVec2 txt_size = ImGui::CalcTextSize(label);
+    ImVec2 row_size = ImGui::GetContentRegionAvail();
+    ImVec2 sel_size = ImVec2(0, row_size.x);
+    float  offset_x = std::max(0.0f, (row_size.x - txt_size.x) / 2.0f);
+    float  offset_y = std::max(0.0f, (row_size.x - txt_size.y) / 2.0f);
+
+    // render selectable placeholder
+    std::string ID = "##" + std::string(label) + "-" + std::to_string(tab_index);
+    if (ImGui::Selectable(ID.c_str(), selected_tab == tab_index, 0, sel_size))
+        selected_tab = tab_index;
+
+    // fill selectable content
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offset_y);
+    ImGui::TextUnformatted(label);
+
+    ImGui::PopStyleVar();
+    ImGui::PopStyleVar();
 }
 
 void MyApp::render_displays(const char* name, const std::vector<DisplaySettings>& display_settings)
@@ -133,7 +168,7 @@ void MyApp::render_displays(const char* name, const std::vector<DisplaySettings>
             const bool  selected = sel_index == i;
 
             std::stringstream ss;
-            ss << ICON_FA_DESKTOP << " " << settings.width << "x" << settings.height << "@" << settings.frequency;
+            ss << " " << ICON_FA_DESKTOP << " " << settings.width << "x" << settings.height << "@" << settings.frequency;
             if (!settings.name.empty())
                 ss << " (" << settings.name << ")";
 
@@ -170,7 +205,7 @@ void MyApp::render_displays(const char* name, const std::vector<DisplaySettings>
     }
 }
 
-#ifdef USE_PLATFORM_WINDOWS
+#ifdef BUILD_WINDOWS_APPLICATION
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 #else
 int main(int argc, const char* argv[])
@@ -206,6 +241,6 @@ int main(int argc, const char* argv[])
     app.width     = mode->width;
     app.height    = mode->height;
     app.decorated = false;
-    app.title     = "Virtual Desktop Resizer";
+    app.title     = "Moonlight Launcher";
     app.run();
 }

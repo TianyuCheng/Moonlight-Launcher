@@ -60,7 +60,7 @@ void Application::run()
         ImGui::Render();
 
         glViewport(0, 0, width, height);
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);
@@ -92,6 +92,9 @@ void Application::theme()
     style.ChildRounding     = 16.f;
     style.FrameBorderSize   = 0.0f;
     style.WindowBorderSize  = 4.0f;
+    style.ChildBorderSize   = 0.0f;
+
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.4, 0.4, 0.4f, 1.0f);
 }
 
 void Application::setup()
@@ -218,9 +221,8 @@ void Application::load_fonts()
     ImFontConfig main_cfg = config;
     main_cfg.MergeMode    = false;
 
-    ImFontConfig icon_cfg     = config;
-    icon_cfg.MergeMode        = true;
-    icon_cfg.GlyphMinAdvanceX = ICON_FONT_SIZE * xscale;
+    ImFontConfig icon_cfg = config;
+    icon_cfg.MergeMode    = true;
 
     auto fs = cmrc::fonts::get_filesystem();
 

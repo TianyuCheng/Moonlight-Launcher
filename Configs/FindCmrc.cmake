@@ -4,7 +4,7 @@ include(FetchContent)
 FetchContent_Declare(
   cmrc
   GIT_REPOSITORY https://github.com/vector-of-bool/cmrc.git
-  GIT_TAG        2.0.1
+  GIT_TAG        master
 )
 
 # get properties

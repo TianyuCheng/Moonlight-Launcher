@@ -40,11 +40,6 @@ std::vector<DisplaySettings> list_display_settings()
         return lhs.width != rhs.width ? (lhs.width > rhs.width) : (lhs.height > rhs.height);
     });
 
-    display_settings.erase(std::remove_if(
-        display_settings.begin(),
-        display_settings.end(), [&](const auto& settings) {
-        return settings.frequency < 60 || settings.width < 1000 || settings.height < 1000;
-    }));
     return display_settings;
 }
 
