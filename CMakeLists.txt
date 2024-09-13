@@ -35,8 +35,8 @@ target_link_libraries(Moonlight-Launcher PRIVATE Font-Resources)
 target_link_libraries(Moonlight-Launcher PRIVATE iconfont glfw imgui spdlog SetDPI)
 set_target_properties(Moonlight-Launcher PROPERTIES FOLDER "Product")
 
-# project specific settings
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  target_compile_definitions(Moonlight-Launcher PRIVATE -DBUILD_WINDOWS_APPLICATION)
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
-endif()
+# # project specific settings
+# if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+#   target_compile_definitions(Moonlight-Launcher PRIVATE -DBUILD_WINDOWS_APPLICATION)
+#   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
+# endif()

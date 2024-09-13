@@ -1,3 +1,4 @@
+#include <iostream>
 #include <sstream>
 #include <imgui.h>
 #include "font.h"
@@ -31,7 +32,6 @@ struct MyApp : public Application
     bool is_prev_tab_pressed();
     bool is_exit_pressed();
 
-    void render_tabs();
     void render_vtabs();
     void render_tab_button(const char* label, int tab_index, int& selected_tab);
     void render_displays(const char* name, const std::vector<DisplaySettings>& display_settings);
@@ -114,12 +114,12 @@ void MyApp::render_vtabs()
 
     // next tab
     if (is_next_tab_pressed()) {
-        tab_index = (tab_index + 1) % tab_count;
+        tab_index = std::min(tab_index + 1, tab_count - 1);
     }
 
     // prev tab
     if (is_prev_tab_pressed()) {
-        tab_index = (tab_index - 1) % tab_count;
+        tab_index = std::max(tab_index - 1, 0);
     }
 
     if (is_exit_pressed()) {
@@ -159,6 +159,7 @@ void MyApp::render_displays(const char* name, const std::vector<DisplaySettings>
     static int sel_index = 0;
 
     bool  execute = false;
+    bool  is_key  = is_up_pressed() || is_down_pressed();
     float height  = ImGui::GetContentRegionAvail().y;
 
     ImGui::PushItemWidth(-1);
@@ -171,14 +172,19 @@ void MyApp::render_displays(const char* name, const std::vector<DisplaySettings>
             ss << " " << ICON_FA_DESKTOP << " " << settings.width << "x" << settings.height << "@" << settings.frequency;
             if (!settings.name.empty())
                 ss << " (" << settings.name << ")";
+            ImGui::Selectable(ss.str().c_str(), selected);
 
-            if (ImGui::Selectable(ss.str().c_str(), selected)) {
+            if (ImGui::IsItemHovered()) {
+                sel_index = i;
+                execute   = false;
+            }
+
+            if (ImGui::IsItemClicked()) {
                 sel_index = i;
                 execute   = true;
             }
 
-            // Scroll to ensure the selected item is visible
-            if (i == sel_index) {
+            if (is_key && sel_index == i) {
                 ImGui::SetScrollFromPosY(ImGui::GetCursorStartPos().y + ImGui::GetCursorPosY(), 0.5f);
             }
         }
@@ -188,10 +194,14 @@ void MyApp::render_displays(const char* name, const std::vector<DisplaySettings>
 
     if (is_up_pressed()) {
         sel_index = (sel_index - 1 + display_settings.size()) % display_settings.size();
+        glfwSetCursorPos(window, 0.0, 0.0); // reset window cursor to avoid conflict
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
 
     if (is_down_pressed()) {
         sel_index = (sel_index + 1) % display_settings.size();
+        glfwSetCursorPos(window, 0.0, 0.0); // reset window cursor to avoid conflict
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
 
     if (is_enter_pressed()) {
@@ -236,8 +246,18 @@ int main(int argc, const char* argv[])
     spdlog::info("Current resolution: {}x{}", mode->width, mode->height);
     spdlog::info("Refresh rate: {} Hz", mode->refreshRate);
 
+    // query gamepad support
+    uint JOYSTICK_ID = GLFW_JOYSTICK_1;
+    for (uint joystick_id = GLFW_JOYSTICK_1; joystick_id <= GLFW_JOYSTICK_LAST; joystick_id++) {
+        if (glfwJoystickPresent(joystick_id) && glfwJoystickIsGamepad(joystick_id)) {
+            spdlog::info("GamePad connected: {}", glfwGetJoystickName(joystick_id));
+            JOYSTICK_ID = joystick_id;
+        }
+    }
+
     // application
     MyApp app;
+    app.joystick  = JOYSTICK_ID;
     app.width     = mode->width;
     app.height    = mode->height;
     app.decorated = false;
