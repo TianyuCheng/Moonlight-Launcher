@@ -26,7 +26,6 @@ struct Application
     std::string title     = "Application";
     uint        width     = 0;
     uint        height    = 0;
-    uint        joystick  = GLFW_JOYSTICK_1;
     bool        decorated = true;
     float       xscale    = 1.0f;
     float       yscale    = 1.0f;

@@ -1,5 +1,5 @@
-Windows Desktop Resizer
-=======================
+Moonlight-Launcher
+==================
 
 This is a simple tool created for dynamically adjusting Windows desktop resolution and scale.
 

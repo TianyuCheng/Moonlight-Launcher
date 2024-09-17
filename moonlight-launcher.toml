@@ -1,0 +1,79 @@
+[[resolutions]]
+name = "HD"
+freq = 60
+scale = 1.5
+width = 1920
+height = 1080
+
+[[resolutions]]
+name = "2K"
+freq = 60
+scale = 1.5
+width = 2560
+height = 1440
+
+[[resolutions]]
+name = "4K"
+freq = 60
+scale = 1.5
+width = 3840
+height = 2160
+
+[[resolutions]]
+name = "Macbook/M3"
+freq = 60
+scale = 1.5
+width = 3024
+height = 1964
+
+[[resolutions]]
+name = "Macbook/Intel"
+freq = 60
+scale = 1.5
+width = 3072
+height = 1920
+
+[[resolutions]]
+name = "iPad/A1980"
+freq = 60
+scale = 1.5
+width = 2388
+height = 1668
+
+[[resolutions]]
+name = "iPhone 13 Pro"
+freq = 60
+scale = 1.5
+width = 2532
+height = 1170
+
+[[resolutions]]
+name = "AOPEN"
+freq = 60
+scale = 1.5
+width = 3840
+height = 1080
+
+[[apps]]
+name = "Genshin Impact"
+elevated = true
+commands = """
+taskkill "3DMigoto Loader.exe"
+taskkill "YuanShen.exe"
+cd /D "D:/Program Files/Modding Tools/3dmigoto - GIMI"
+start "" "D:/Program Files/Modding Tools/3dmigoto - GIMI/3DMigoto Loader.exe"
+timeout 1
+start "" "D:/Program Files/Genshin Impact/Genshin Impact Game/YuanShen.exe"
+"""
+
+[[apps]]
+name = "Star Rail"
+elevated = true
+commands = """
+taskkill "3DMigotoLoader.exe"
+taskkill "StarRail.exe"
+cd /D "D:/Program Files/Modding Tools/3dmigoto - SRMI"
+start "" "D:/Program Files/Modding Tools/3dmigoto - SRMI/3DMigotoLoader.exe"
+timeout 1
+start "" "D:/Program Files/Star Rail/Game/StarRail.exe"
+"""

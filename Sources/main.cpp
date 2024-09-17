@@ -1,28 +1,72 @@
-#include <iostream>
+#include <fstream>
 #include <sstream>
 #include <imgui.h>
+#include <filesystem>
+
+#define TOML_EXCEPTIONS 0
+#include <toml++/toml.hpp>
+
 #include "font.h"
 #include "display.h"
 #include "application.h"
+
+struct AppLauncher
+{
+    std::string name     = "";
+    std::string script   = "";
+    bool        elevated = false;
+    std::string commands = "";
+
+    void launch()
+    {
+        spdlog::info("Launch {}", name);
+
+        prepare();
+        execute();
+    }
+
+    void prepare()
+    {
+        auto scriptfile = std::filesystem::current_path() / script;
+        // if (std::filesystem::exists(scriptfile))
+        //     return;
+
+        std::ofstream of(scriptfile, std::ios::out);
+        of << commands;
+        of.close();
+    }
+
+    void execute()
+    {
+        spdlog::info("script {}", script);
+        HINSTANCE result = ShellExecuteA(
+            nullptr,
+            elevated ? "runas" : "open",
+            script.c_str(),
+            NULL,
+            NULL,
+            SW_SHOWNORMAL);
+
+        if ((long long)(result) <= 32) {
+            spdlog::error("Failed to execute command!");
+            exit(1);
+        } else {
+            spdlog::info("Command executed successfully!");
+        }
+    }
+};
 
 struct MyApp : public Application
 {
     explicit MyApp()
     {
-        // display settings
-        preset_display_settings.push_back(DisplaySettings{"HD", 1920, 1080, 60, 1.5f});
-        preset_display_settings.push_back(DisplaySettings{"2K", 2560, 1440, 60, 1.5f});
-        preset_display_settings.push_back(DisplaySettings{"4K", 3840, 2160, 60, 1.5f});
-        preset_display_settings.push_back(DisplaySettings{"M3", 3024, 1964, 60, 1.5f});
-        preset_display_settings.push_back(DisplaySettings{"iPad", 2388, 1668, 60, 1.5f});
-        preset_display_settings.push_back(DisplaySettings{"iPhone", 2532, 1170, 60, 1.5f});
-        preset_display_settings.push_back(DisplaySettings{"Intel", 3072, 1920, 60, 1.5f});
-        preset_display_settings.push_back(DisplaySettings{"AOPEN", 3840, 1080, 60, 1.5f});
+        init();
 
         // display settings
         supported_display_settings = list_display_settings();
     }
 
+    void init();
     void tick() override;
 
     bool is_up_pressed();
@@ -34,14 +78,94 @@ struct MyApp : public Application
 
     void render_vtabs();
     void render_tab_button(const char* label, int tab_index, int& selected_tab);
+    void render_exit_button(const char* label);
     void render_displays(const char* name, const std::vector<DisplaySettings>& display_settings);
+    void render_launcher();
+    void render_helpmenu();
 
     std::vector<DisplaySettings> preset_display_settings{};
     std::vector<DisplaySettings> supported_display_settings{};
+    std::vector<AppLauncher>     application_launchers{};
 
     int tab_index = 0;
-    int tab_count = 2;
+    int tab_count = 4;
 };
+
+#include <iostream>
+void MyApp::init()
+{
+    auto config_file = std::filesystem::current_path() / "moonlight-launcher.toml";
+    if (!std::filesystem::exists(config_file)) {
+        spdlog::info("Toml config file does not exist!");
+        return;
+    }
+
+    toml::parse_result result = toml::parse_file(config_file.c_str());
+    if (!result) {
+        spdlog::error("Failed to parse toml config file!");
+        exit(1);
+    }
+
+    toml::table table = std::move(result).table();
+
+    // parse resolutions
+    auto resolutions = table["resolutions"];
+    for (auto& elem : *resolutions.as_array()) {
+        auto* item   = elem.as_table();
+        auto  name   = item->get("name")->value_or("");
+        auto  freq   = item->get("freq")->value_or(60);
+        auto  scale  = item->get("scale")->value_or(1.0f);
+        auto  width  = item->get("width")->value_or(0);
+        auto  height = item->get("height")->value_or(0);
+
+        // sanity check
+        if (scale < 1.0f) {
+            spdlog::error("[resolutions] expect scale >= 1.0f!");
+            exit(1);
+        }
+
+        // sanity check
+        if (width <= 0 || height <= 0) {
+            spdlog::error("[resolutions] expect width/height > 0!");
+            exit(1);
+        }
+
+        // sanity check
+        if (freq <= 0) {
+            spdlog::error("[resolutions] expect frequency > 0!");
+            exit(1);
+        }
+
+        preset_display_settings.push_back(
+            DisplaySettings{name, width, height, freq, scale});
+    }
+
+    // parse applications
+    auto apps = table["apps"];
+    for (auto& elem : *apps.as_array()) {
+        auto* item     = elem.as_table();
+        auto  name     = item->get("name")->value_or<std::string>("");
+        auto  elevated = item->get("elevated")->value_or(false);
+        auto  commands = item->get("commands")->value_or<std::string>("");
+
+        // sanity check
+        if (name.empty()) {
+            spdlog::error("[apps] expect non-empty name!");
+            exit(1);
+        }
+
+        // sanity check
+        if (commands.empty()) {
+            spdlog::error("[apps] expect non-empty commands!");
+            exit(1);
+        }
+
+        auto script = name + ".bat";
+        std::replace(script.begin(), script.end(), ' ', '_');
+        application_launchers.push_back(
+            AppLauncher{name, script, elevated, commands});
+    }
+}
 
 void MyApp::tick()
 {
@@ -95,6 +219,9 @@ void MyApp::render_vtabs()
     {
         render_tab_button(ICON_FA_BOOKMARK, 0, tab_index);
         render_tab_button(ICON_FA_LIST, 1, tab_index);
+        render_tab_button(ICON_FA_GIFT, 2, tab_index);
+        render_tab_button(ICON_FA_QUESTION, 3, tab_index);
+        render_exit_button(ICON_FA_POWER_OFF);
     }
     ImGui::EndChild();
 
@@ -107,6 +234,8 @@ void MyApp::render_vtabs()
         {
             case 0: render_displays("##Presets", preset_display_settings);      break;
             case 1: render_displays("##Supported", supported_display_settings); break;
+            case 2: render_launcher();                                          break;
+            case 3: render_helpmenu();                                          break;
         }
         // clang-format on
     }
@@ -114,12 +243,12 @@ void MyApp::render_vtabs()
 
     // next tab
     if (is_next_tab_pressed()) {
-        tab_index = std::min(tab_index + 1, tab_count - 1);
+        tab_index = (tab_index + 1) % tab_count;
     }
 
     // prev tab
     if (is_prev_tab_pressed()) {
-        tab_index = std::max(tab_index - 1, 0);
+        tab_index = (tab_index - 1) % tab_count;
     }
 
     if (is_exit_pressed()) {
@@ -154,6 +283,32 @@ void MyApp::render_tab_button(const char* label, int tab_index, int& selected_ta
     ImGui::PopStyleVar();
 }
 
+void MyApp::render_exit_button(const char* label)
+{
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+
+    // adjust selectable padding
+    ImVec2 txt_size = ImGui::CalcTextSize(label);
+    ImVec2 row_size = ImGui::GetContentRegionAvail();
+    ImVec2 sel_size = ImVec2(0, row_size.x);
+    float  offset_x = std::max(0.0f, (row_size.x - txt_size.x) / 2.0f);
+    float  offset_y = std::max(0.0f, (row_size.x - txt_size.y) / 2.0f);
+
+    // render selectable placeholder
+    if (ImGui::Selectable("##exit", false, 0, sel_size))
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+    // fill selectable content
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offset_y);
+    ImGui::TextUnformatted(label);
+
+    ImGui::PopStyleVar();
+    ImGui::PopStyleVar();
+}
+
 void MyApp::render_displays(const char* name, const std::vector<DisplaySettings>& display_settings)
 {
     static int sel_index = 0;
@@ -169,7 +324,7 @@ void MyApp::render_displays(const char* name, const std::vector<DisplaySettings>
             const bool  selected = sel_index == i;
 
             std::stringstream ss;
-            ss << " " << ICON_FA_DESKTOP << " " << settings.width << "x" << settings.height << "@" << settings.frequency;
+            ss << " " << ICON_FA_DESKTOP << " " << settings.width << "x" << settings.height << "@" << settings.frequency << " Hz";
             if (!settings.name.empty())
                 ss << " (" << settings.name << ")";
             ImGui::Selectable(ss.str().c_str(), selected);
@@ -215,6 +370,112 @@ void MyApp::render_displays(const char* name, const std::vector<DisplaySettings>
     }
 }
 
+void MyApp::render_launcher()
+{
+    static int sel_index = 0;
+
+    bool  execute = false;
+    bool  is_key  = is_up_pressed() || is_down_pressed();
+    float height  = ImGui::GetContentRegionAvail().y;
+
+    ImGui::PushItemWidth(-1);
+    if (ImGui::ListBoxHeader("#app-launcher", ImVec2(-1, height))) {
+        for (size_t i = 0; i < application_launchers.size(); i++) {
+            const auto& settings = application_launchers.at(i);
+            const bool  selected = sel_index == i;
+
+            std::stringstream ss;
+            ss << " " << ICON_FA_GIFT << " " << settings.name;
+            ImGui::Selectable(ss.str().c_str(), selected);
+
+            if (ImGui::IsItemHovered()) {
+                sel_index = i;
+                execute   = false;
+            }
+
+            if (ImGui::IsItemClicked()) {
+                sel_index = i;
+                execute   = true;
+            }
+
+            if (is_key && sel_index == i) {
+                ImGui::SetScrollFromPosY(ImGui::GetCursorStartPos().y + ImGui::GetCursorPosY(), 0.5f);
+            }
+        }
+        ImGui::ListBoxFooter();
+    }
+    ImGui::PopItemWidth();
+
+    if (is_up_pressed()) {
+        sel_index = (sel_index - 1 + application_launchers.size()) % application_launchers.size();
+        glfwSetCursorPos(window, 0.0, 0.0); // reset window cursor to avoid conflict
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    }
+
+    if (is_down_pressed()) {
+        sel_index = (sel_index + 1) % application_launchers.size();
+        glfwSetCursorPos(window, 0.0, 0.0); // reset window cursor to avoid conflict
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    }
+
+    if (is_enter_pressed()) {
+        execute = true;
+    }
+
+    if (execute) {
+        auto& launcher = application_launchers.at(sel_index);
+        launcher.launch();
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+    }
+}
+
+void MyApp::render_helpmenu()
+{
+    static std::vector<std::pair<std::string, std::string>> keyboard_shortcuts = {
+        {"Next Tab", "<Tab>"},
+        {"Prev Tab", "<S-Tab>"},
+        {"Next Item", "<Down>"},
+        {"Prev Item", "<Up>"},
+        {"Select", "<Enter>"},
+        {"Exit", "<Esc>"},
+    };
+
+    static std::vector<std::pair<std::string, std::string>> gamepad_shortcuts = {
+        {"Next Tab", "<R1>"},
+        {"Prev Tab", "<L1>"},
+        {"Next Item", "<DPAD-Up>"},
+        {"Prev Item", "<DPAD-Down>"},
+        {"Select", "<X>"},
+        {"Exit", "<Start>"},
+    };
+
+    if (ImGui::CollapsingHeader("Keyboard Shortcuts", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::BeginTable("Keyboard Shortcuts##table", 2)) {
+            for (auto& row : keyboard_shortcuts) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("%s", row.first.c_str());
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%s", row.second.c_str());
+            }
+            ImGui::EndTable();
+        }
+    }
+
+    if (ImGui::CollapsingHeader("GamePad Shortcuts", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::BeginTable("GamePad Shortcuts##table", 2)) {
+            for (auto& row : gamepad_shortcuts) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("%s", row.first.c_str());
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%s", row.second.c_str());
+            }
+            ImGui::EndTable();
+        }
+    }
+}
+
 #ifdef BUILD_WINDOWS_APPLICATION
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 #else
@@ -246,18 +507,8 @@ int main(int argc, const char* argv[])
     spdlog::info("Current resolution: {}x{}", mode->width, mode->height);
     spdlog::info("Refresh rate: {} Hz", mode->refreshRate);
 
-    // query gamepad support
-    uint JOYSTICK_ID = GLFW_JOYSTICK_1;
-    for (uint joystick_id = GLFW_JOYSTICK_1; joystick_id <= GLFW_JOYSTICK_LAST; joystick_id++) {
-        if (glfwJoystickPresent(joystick_id) && glfwJoystickIsGamepad(joystick_id)) {
-            spdlog::info("GamePad connected: {}", glfwGetJoystickName(joystick_id));
-            JOYSTICK_ID = joystick_id;
-        }
-    }
-
     // application
     MyApp app;
-    app.joystick  = JOYSTICK_ID;
     app.width     = mode->width;
     app.height    = mode->height;
     app.decorated = false;

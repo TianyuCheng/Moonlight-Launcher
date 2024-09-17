@@ -20,6 +20,7 @@ cmrc_add_resource_library(Font-Resources
 set_target_properties(Font-Resources PROPERTIES FOLDER "Product")
 
 # project sources
+find_package(toml REQUIRED)
 find_package(glfw REQUIRED)
 find_package(imgui REQUIRED)
 find_package(spdlog REQUIRED)
@@ -32,11 +33,20 @@ add_executable(Moonlight-Launcher
     Sources/application.h
     Sources/application.cpp)
 target_link_libraries(Moonlight-Launcher PRIVATE Font-Resources)
-target_link_libraries(Moonlight-Launcher PRIVATE iconfont glfw imgui spdlog SetDPI)
+target_link_libraries(Moonlight-Launcher PRIVATE iconfont toml glfw imgui spdlog SetDPI)
 set_target_properties(Moonlight-Launcher PROPERTIES FOLDER "Product")
 
-# # project specific settings
-# if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-#   target_compile_definitions(Moonlight-Launcher PRIVATE -DBUILD_WINDOWS_APPLICATION)
-#   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
-# endif()
+# project specific settings
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  target_compile_definitions(Moonlight-Launcher PRIVATE -DBUILD_WINDOWS_APPLICATION)
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
+endif()
+
+# copy configuration file
+add_custom_command(
+    TARGET Moonlight-Launcher POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${PROJECT_SOURCE_DIR}/moonlight-launcher.toml
+    ${CMAKE_BINARY_DIR}/moonlight-launcher.toml
+    COMMENT "Copying configuration file!"
+)

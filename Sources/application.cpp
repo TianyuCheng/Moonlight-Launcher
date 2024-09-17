@@ -164,59 +164,66 @@ void Application::cleanup()
 
 void Application::gamepad()
 {
-    ImGuiIO& io = ImGui::GetIO();
+    auto update_joystick_events = [](int joystick) {
+        ImGuiIO& io = ImGui::GetIO();
 
-    GLFWgamepadstate gamepad;
+        GLFWgamepadstate gamepad;
 
-    if (!glfwGetGamepadState(joystick, &gamepad))
-        return;
+        if (!glfwGetGamepadState(joystick, &gamepad))
+            return;
 
-    if (!glfwJoystickPresent(joystick)) {
-        for (int i = 0; i < ImGuiNavInput_COUNT; ++i)
-            io.NavInputs[i] = 0.0f;
-        return;
-    }
+        if (!glfwJoystickPresent(joystick)) {
+            for (int i = 0; i < ImGuiNavInput_COUNT; ++i)
+                io.NavInputs[i] = 0.0f;
+            return;
+        }
 
-    int count;
+        int count;
 
-    // Get the joystick axes
-    const float* axes = glfwGetJoystickAxes(joystick, &count);
-    if (axes) {
-        // clang-format off
-        MAP_ANALOG(ImGuiKey_GamepadLStickLeft,  GLFW_GAMEPAD_AXIS_LEFT_X,  0, -0.25f, -1.0f);
-        MAP_ANALOG(ImGuiKey_GamepadLStickRight, GLFW_GAMEPAD_AXIS_LEFT_X,  0, +0.25f, +1.0f);
-        MAP_ANALOG(ImGuiKey_GamepadLStickUp,    GLFW_GAMEPAD_AXIS_LEFT_Y,  1, -0.25f, -1.0f);
-        MAP_ANALOG(ImGuiKey_GamepadLStickDown,  GLFW_GAMEPAD_AXIS_LEFT_Y,  1, +0.25f, +1.0f);
-        MAP_ANALOG(ImGuiKey_GamepadRStickLeft,  GLFW_GAMEPAD_AXIS_RIGHT_X, 2, -0.25f, -1.0f);
-        MAP_ANALOG(ImGuiKey_GamepadRStickRight, GLFW_GAMEPAD_AXIS_RIGHT_X, 2, +0.25f, +1.0f);
-        MAP_ANALOG(ImGuiKey_GamepadRStickUp,    GLFW_GAMEPAD_AXIS_RIGHT_Y, 3, -0.25f, -1.0f);
-        MAP_ANALOG(ImGuiKey_GamepadRStickDown,  GLFW_GAMEPAD_AXIS_RIGHT_Y, 3, +0.25f, +1.0f);
-        // clang-format on
-    }
+        // Get the joystick axes
+        const float* axes = glfwGetJoystickAxes(joystick, &count);
+        if (axes) {
+            // clang-format off
+            MAP_ANALOG(ImGuiKey_GamepadLStickLeft,  GLFW_GAMEPAD_AXIS_LEFT_X,  0, -0.25f, -1.0f);
+            MAP_ANALOG(ImGuiKey_GamepadLStickRight, GLFW_GAMEPAD_AXIS_LEFT_X,  0, +0.25f, +1.0f);
+            MAP_ANALOG(ImGuiKey_GamepadLStickUp,    GLFW_GAMEPAD_AXIS_LEFT_Y,  1, -0.25f, -1.0f);
+            MAP_ANALOG(ImGuiKey_GamepadLStickDown,  GLFW_GAMEPAD_AXIS_LEFT_Y,  1, +0.25f, +1.0f);
+            MAP_ANALOG(ImGuiKey_GamepadRStickLeft,  GLFW_GAMEPAD_AXIS_RIGHT_X, 2, -0.25f, -1.0f);
+            MAP_ANALOG(ImGuiKey_GamepadRStickRight, GLFW_GAMEPAD_AXIS_RIGHT_X, 2, +0.25f, +1.0f);
+            MAP_ANALOG(ImGuiKey_GamepadRStickUp,    GLFW_GAMEPAD_AXIS_RIGHT_Y, 3, -0.25f, -1.0f);
+            MAP_ANALOG(ImGuiKey_GamepadRStickDown,  GLFW_GAMEPAD_AXIS_RIGHT_Y, 3, +0.25f, +1.0f);
+            // clang-format on
+        }
 
-    // Get the joystick buttons
-    const unsigned char* buttons = glfwGetJoystickButtons(joystick, &count);
-    if (buttons) {
-        io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
-        // clang-format off
-        MAP_BUTTON(ImGuiKey_GamepadStart,     GLFW_GAMEPAD_BUTTON_START,        7);
-        MAP_BUTTON(ImGuiKey_GamepadBack,      GLFW_GAMEPAD_BUTTON_BACK,         6);
-        MAP_BUTTON(ImGuiKey_GamepadFaceLeft,  GLFW_GAMEPAD_BUTTON_X,            2);  // Xbox X, PS Square
-        MAP_BUTTON(ImGuiKey_GamepadFaceRight, GLFW_GAMEPAD_BUTTON_B,            1); // Xbox B, PS Circle
-        MAP_BUTTON(ImGuiKey_GamepadFaceUp,    GLFW_GAMEPAD_BUTTON_Y,            3);    // Xbox Y, PS Triangle
-        MAP_BUTTON(ImGuiKey_GamepadFaceDown,  GLFW_GAMEPAD_BUTTON_A,            0);  // Xbox A, PS Cross
-        MAP_BUTTON(ImGuiKey_GamepadDpadLeft,  GLFW_GAMEPAD_BUTTON_DPAD_LEFT,    13);
-        MAP_BUTTON(ImGuiKey_GamepadDpadRight, GLFW_GAMEPAD_BUTTON_DPAD_RIGHT,   11);
-        MAP_BUTTON(ImGuiKey_GamepadDpadUp,    GLFW_GAMEPAD_BUTTON_DPAD_UP,      10);
-        MAP_BUTTON(ImGuiKey_GamepadDpadDown,  GLFW_GAMEPAD_BUTTON_DPAD_DOWN,    12);
-        MAP_BUTTON(ImGuiKey_GamepadL1,        GLFW_GAMEPAD_BUTTON_LEFT_BUMPER,  4);
-        MAP_BUTTON(ImGuiKey_GamepadR1,        GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER, 5);
-        MAP_ANALOG(ImGuiKey_GamepadL2,        GLFW_GAMEPAD_AXIS_LEFT_TRIGGER,   4, -0.75f, +1.0f);
-        MAP_ANALOG(ImGuiKey_GamepadR2,        GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER,  5, -0.75f, +1.0f);
-        MAP_BUTTON(ImGuiKey_GamepadL3,        GLFW_GAMEPAD_BUTTON_LEFT_THUMB,   8);
-        MAP_BUTTON(ImGuiKey_GamepadR3,        GLFW_GAMEPAD_BUTTON_RIGHT_THUMB,  9);
-        // clang-format on
-    }
+        // Get the joystick buttons
+        const unsigned char* buttons = glfwGetJoystickButtons(joystick, &count);
+        if (buttons) {
+            io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
+            // clang-format off
+            MAP_BUTTON(ImGuiKey_GamepadStart,     GLFW_GAMEPAD_BUTTON_START,        7);
+            MAP_BUTTON(ImGuiKey_GamepadBack,      GLFW_GAMEPAD_BUTTON_BACK,         6);
+            MAP_BUTTON(ImGuiKey_GamepadFaceLeft,  GLFW_GAMEPAD_BUTTON_X,            2);  // Xbox X, PS Square
+            MAP_BUTTON(ImGuiKey_GamepadFaceRight, GLFW_GAMEPAD_BUTTON_B,            1); // Xbox B, PS Circle
+            MAP_BUTTON(ImGuiKey_GamepadFaceUp,    GLFW_GAMEPAD_BUTTON_Y,            3);    // Xbox Y, PS Triangle
+            MAP_BUTTON(ImGuiKey_GamepadFaceDown,  GLFW_GAMEPAD_BUTTON_A,            0);  // Xbox A, PS Cross
+            MAP_BUTTON(ImGuiKey_GamepadDpadLeft,  GLFW_GAMEPAD_BUTTON_DPAD_LEFT,    13);
+            MAP_BUTTON(ImGuiKey_GamepadDpadRight, GLFW_GAMEPAD_BUTTON_DPAD_RIGHT,   11);
+            MAP_BUTTON(ImGuiKey_GamepadDpadUp,    GLFW_GAMEPAD_BUTTON_DPAD_UP,      10);
+            MAP_BUTTON(ImGuiKey_GamepadDpadDown,  GLFW_GAMEPAD_BUTTON_DPAD_DOWN,    12);
+            MAP_BUTTON(ImGuiKey_GamepadL1,        GLFW_GAMEPAD_BUTTON_LEFT_BUMPER,  4);
+            MAP_BUTTON(ImGuiKey_GamepadR1,        GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER, 5);
+            MAP_ANALOG(ImGuiKey_GamepadL2,        GLFW_GAMEPAD_AXIS_LEFT_TRIGGER,   4, -0.75f, +1.0f);
+            MAP_ANALOG(ImGuiKey_GamepadR2,        GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER,  5, -0.75f, +1.0f);
+            MAP_BUTTON(ImGuiKey_GamepadL3,        GLFW_GAMEPAD_BUTTON_LEFT_THUMB,   8);
+            MAP_BUTTON(ImGuiKey_GamepadR3,        GLFW_GAMEPAD_BUTTON_RIGHT_THUMB,  9);
+            // clang-format on
+        }
+    };
+
+    // query gamepad support
+    for (uint joystick = GLFW_JOYSTICK_1; joystick <= GLFW_JOYSTICK_LAST; joystick++)
+        if (glfwJoystickPresent(joystick) && glfwJoystickIsGamepad(joystick))
+            update_joystick_events(joystick);
 }
 
 void Application::fonts()
