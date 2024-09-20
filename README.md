@@ -25,7 +25,7 @@ Features
 
 Screenshots
 -----------
-![screen](./Screenshots/screen.png)
+![screen](./Screenshots/screens.png)
 ![app](./Screenshots/apps.png)
 ![help](./Screenshots/help.png)
 
