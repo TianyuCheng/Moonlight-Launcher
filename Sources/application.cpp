@@ -24,6 +24,12 @@ CMRC_DECLARE(fonts);
 
 // ---------------------------------------------------------------------------
 
+static void on_move(GLFWwindow* window, double xpos, double ypos)
+{
+    // restore access to cursor on mouse move
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+}
+
 static void on_key(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
@@ -115,6 +121,7 @@ void Application::setup()
     glfwSetWindowUserPointer(window, this);
     glfwSetErrorCallback(on_error);
     glfwSetKeyCallback(window, on_key);
+    glfwSetCursorPosCallback(window, on_move);
     glfwSetWindowContentScaleCallback(window, on_scale);
 
     // OpenGL context
@@ -133,10 +140,6 @@ void Application::setup()
 
     // scale
     glfwGetWindowContentScale(window, &xscale, &yscale);
-
-    // mouse
-    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-    // glfwSetCursorPos(window, 0.0, 0.0);
 
     // fonts
     fonts();

@@ -28,8 +28,7 @@ struct AppLauncher
     void prepare()
     {
         auto scriptfile = std::filesystem::current_path() / script;
-        // if (std::filesystem::exists(scriptfile))
-        //     return;
+        // if (std::filesystem::exists(scriptfile)) return;
 
         std::ofstream of(scriptfile, std::ios::out);
         of << commands;
@@ -91,7 +90,6 @@ struct MyApp : public Application
     int tab_count = 4;
 };
 
-#include <iostream>
 void MyApp::init()
 {
     auto config_file = std::filesystem::current_path() / "moonlight-launcher.toml";
@@ -169,6 +167,7 @@ void MyApp::init()
 
 void MyApp::tick()
 {
+    glfwFocusWindow(window);
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoResize;
     ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
@@ -177,8 +176,6 @@ void MyApp::tick()
         render_vtabs();
     }
     ImGui::End();
-
-    glfwFocusWindow(window);
 }
 
 bool MyApp::is_up_pressed()
@@ -199,13 +196,13 @@ bool MyApp::is_enter_pressed()
 bool MyApp::is_next_tab_pressed()
 {
     return ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_GamepadR1)) ||
-           (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Tab)) && !ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftShift)));
+           (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Tab)) && !ImGui::GetIO().KeyShift);
 }
 
 bool MyApp::is_prev_tab_pressed()
 {
     return ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_GamepadL1)) ||
-           (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Tab)) && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftShift)));
+           (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Tab)) && ImGui::GetIO().KeyShift);
 }
 
 bool MyApp::is_exit_pressed()
@@ -217,10 +214,10 @@ void MyApp::render_vtabs()
 {
     ImGui::BeginChild("Tab Buttons", ImVec2(150, 0), true);
     {
-        render_tab_button(ICON_FA_BOOKMARK, 0, tab_index);
-        render_tab_button(ICON_FA_LIST, 1, tab_index);
-        render_tab_button(ICON_FA_GIFT, 2, tab_index);
-        render_tab_button(ICON_FA_QUESTION, 3, tab_index);
+        render_tab_button(ICON_FA_HOME, 0, tab_index);
+        render_tab_button(ICON_FA_LAPTOP, 1, tab_index);
+        render_tab_button(ICON_FA_CUBE, 2, tab_index);
+        render_tab_button(ICON_FA_INFO, 3, tab_index);
         render_exit_button(ICON_FA_POWER_OFF);
     }
     ImGui::EndChild();
@@ -324,7 +321,7 @@ void MyApp::render_displays(const char* name, const std::vector<DisplaySettings>
             const bool  selected = sel_index == i;
 
             std::stringstream ss;
-            ss << " " << ICON_FA_DESKTOP << " " << settings.width << "x" << settings.height << "@" << settings.frequency << " Hz";
+            ss << " " << ICON_FA_LAPTOP << " " << settings.width << "x" << settings.height << "@" << settings.frequency << " Hz";
             if (!settings.name.empty())
                 ss << " (" << settings.name << ")";
             ImGui::Selectable(ss.str().c_str(), selected);
@@ -349,13 +346,11 @@ void MyApp::render_displays(const char* name, const std::vector<DisplaySettings>
 
     if (is_up_pressed()) {
         sel_index = (sel_index - 1 + display_settings.size()) % display_settings.size();
-        glfwSetCursorPos(window, 0.0, 0.0); // reset window cursor to avoid conflict
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
 
     if (is_down_pressed()) {
         sel_index = (sel_index + 1) % display_settings.size();
-        glfwSetCursorPos(window, 0.0, 0.0); // reset window cursor to avoid conflict
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
 
@@ -385,7 +380,7 @@ void MyApp::render_launcher()
             const bool  selected = sel_index == i;
 
             std::stringstream ss;
-            ss << " " << ICON_FA_GIFT << " " << settings.name;
+            ss << " " << ICON_FA_CUBE << " " << settings.name;
             ImGui::Selectable(ss.str().c_str(), selected);
 
             if (ImGui::IsItemHovered()) {
@@ -408,13 +403,11 @@ void MyApp::render_launcher()
 
     if (is_up_pressed()) {
         sel_index = (sel_index - 1 + application_launchers.size()) % application_launchers.size();
-        glfwSetCursorPos(window, 0.0, 0.0); // reset window cursor to avoid conflict
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
 
     if (is_down_pressed()) {
         sel_index = (sel_index + 1) % application_launchers.size();
-        glfwSetCursorPos(window, 0.0, 0.0); // reset window cursor to avoid conflict
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
 
