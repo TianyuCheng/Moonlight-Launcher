@@ -7,8 +7,11 @@
 #include <toml++/toml.hpp>
 
 #include "font.h"
+#include "logger.h"
 #include "display.h"
 #include "application.h"
+
+static std::shared_ptr<RingBufferSink> logs;
 
 struct AppLauncher
 {
@@ -19,7 +22,7 @@ struct AppLauncher
 
     void launch()
     {
-        spdlog::info("Launch {}", name);
+        Logger::info("Launch {}", name);
 
         prepare();
         execute();
@@ -37,7 +40,7 @@ struct AppLauncher
 
     void execute()
     {
-        spdlog::info("script {}", script);
+        Logger::info("script {}", script);
         HINSTANCE result = ShellExecuteA(
             nullptr,
             elevated ? "runas" : "open",
@@ -47,10 +50,10 @@ struct AppLauncher
             SW_SHOWNORMAL);
 
         if ((long long)(result) <= 32) {
-            spdlog::error("Failed to execute command!");
+            Logger::error("Failed to execute command!");
             exit(1);
         } else {
-            spdlog::info("Command executed successfully!");
+            Logger::info("Command executed successfully!");
         }
     }
 };
@@ -74,6 +77,7 @@ struct MyApp : public Application
     bool is_next_tab_pressed();
     bool is_prev_tab_pressed();
     bool is_exit_pressed();
+    bool is_logger_pressed();
 
     void render_vtabs();
     void render_tab_button(const char* label, int tab_index, int& selected_tab);
@@ -81,26 +85,27 @@ struct MyApp : public Application
     void render_displays(const char* name, const std::vector<DisplaySettings>& display_settings);
     void render_launcher();
     void render_helpmenu();
+    void render_logs();
 
     std::vector<DisplaySettings> preset_display_settings{};
     std::vector<DisplaySettings> supported_display_settings{};
     std::vector<AppLauncher>     application_launchers{};
 
     int tab_index = 0;
-    int tab_count = 4;
+    int tab_count = 5;
 };
 
 void MyApp::init()
 {
     auto config_file = std::filesystem::current_path() / "moonlight-launcher.toml";
     if (!std::filesystem::exists(config_file)) {
-        spdlog::info("Toml config file does not exist!");
+        Logger::info("Toml config file does not exist!");
         return;
     }
 
     toml::parse_result result = toml::parse_file(config_file.c_str());
     if (!result) {
-        spdlog::error("Failed to parse toml config file!");
+        Logger::error("Failed to parse toml config file!");
         exit(1);
     }
 
@@ -118,19 +123,19 @@ void MyApp::init()
 
         // sanity check
         if (scale < 1.0f) {
-            spdlog::error("[resolutions] expect scale >= 1.0f!");
+            Logger::error("[resolutions] expect scale >= 1.0f!");
             exit(1);
         }
 
         // sanity check
         if (width <= 0 || height <= 0) {
-            spdlog::error("[resolutions] expect width/height > 0!");
+            Logger::error("[resolutions] expect width/height > 0!");
             exit(1);
         }
 
         // sanity check
         if (freq <= 0) {
-            spdlog::error("[resolutions] expect frequency > 0!");
+            Logger::error("[resolutions] expect frequency > 0!");
             exit(1);
         }
 
@@ -148,13 +153,13 @@ void MyApp::init()
 
         // sanity check
         if (name.empty()) {
-            spdlog::error("[apps] expect non-empty name!");
+            Logger::error("[apps] expect non-empty name!");
             exit(1);
         }
 
         // sanity check
         if (commands.empty()) {
-            spdlog::error("[apps] expect non-empty commands!");
+            Logger::error("[apps] expect non-empty commands!");
             exit(1);
         }
 
@@ -167,7 +172,7 @@ void MyApp::init()
 
 void MyApp::tick()
 {
-    // glfwFocusWindow(window);
+    glfwFocusWindow(window);
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoResize;
     ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
@@ -210,6 +215,11 @@ bool MyApp::is_exit_pressed()
     return ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_GamepadStart));
 }
 
+bool MyApp::is_logger_pressed()
+{
+    return ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_GraveAccent)) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_GamepadBack));
+}
+
 void MyApp::render_vtabs()
 {
     ImGui::BeginChild("Tab Buttons", ImVec2(150, 0), true);
@@ -217,13 +227,15 @@ void MyApp::render_vtabs()
         render_tab_button(ICON_FA_HOME, 0, tab_index);
         render_tab_button(ICON_FA_LAPTOP, 1, tab_index);
         render_tab_button(ICON_FA_CUBE, 2, tab_index);
-        render_tab_button(ICON_FA_INFO, 3, tab_index);
+        render_tab_button(ICON_FA_INFO_CIRCLE, 3, tab_index);
+        render_tab_button(ICON_FA_BUG, 4, tab_index);
         render_exit_button(ICON_FA_POWER_OFF);
     }
     ImGui::EndChild();
 
     ImGui::SameLine();
 
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.6f, 0.6f, 0.6f, 0.6f));
     ImGui::BeginChild("Tab Content", ImVec2(0, 0), true);
     {
         // clang-format off
@@ -233,10 +245,12 @@ void MyApp::render_vtabs()
             case 1: render_displays("##Supported", supported_display_settings); break;
             case 2: render_launcher();                                          break;
             case 3: render_helpmenu();                                          break;
+            case 4: render_logs();                                              break;
         }
         // clang-format on
     }
     ImGui::EndChild();
+    ImGui::PopStyleColor();
 
     // next tab
     if (is_next_tab_pressed()) {
@@ -438,7 +452,8 @@ void MyApp::render_helpmenu()
     float width  = ImGui::GetContentRegionAvail().x - 16.0f;
     float height = ImGui::GetContentRegionAvail().y;
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
-    if (ImGui::ListBoxHeader("#shortcuts", ImVec2(width, height))) {
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8.0f);
+    if (ImGui::ListBoxHeader("#shortcuts", ImVec2(width, height - 8.0f))) {
         if (ImGui::BeginTable("Shortcuts##table", 3)) {
             ImGui::TableHeadersRow();
             ImGui::TableSetColumnIndex(0);
@@ -464,21 +479,42 @@ void MyApp::render_helpmenu()
     }
 }
 
+void MyApp::render_logs()
+{
+    for (const auto& log : logs->logs()) {
+        ImGui::Text(" %s", log.c_str());
+    }
+}
+
 #ifdef BUILD_WINDOWS_APPLICATION
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 #else
 int main(int argc, const char* argv[])
 #endif
 {
+    auto loglevel = spdlog::level::info;
+
+    auto console = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    console->set_level(loglevel);
+
+    auto custom = std::make_shared<RingBufferSink>(512);
+    custom->set_level(loglevel);
+
+    auto logger = std::make_shared<spdlog::logger>("Moonlight-Launcher", spdlog::sinks_init_list{console, custom});
+    Logger::set_logger(logger);
+
+    // save custom sink
+    logs = custom;
+
     if (!glfwInit()) {
-        spdlog::error("[GLFW] failed to initialize GLFW!");
+        Logger::error("[GLFW] failed to initialize GLFW!");
         exit(1);
     }
 
     // query primary monitor
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     if (!monitor) {
-        spdlog::error("[GLFW] Failed to get primary monitor!");
+        Logger::error("[GLFW] Failed to get primary monitor!");
         glfwTerminate();
         exit(-1);
     }
@@ -486,21 +522,21 @@ int main(int argc, const char* argv[])
     // query video mode
     const GLFWvidmode* mode = glfwGetVideoMode(monitor);
     if (!mode) {
-        spdlog::error("[GLFW] Failed to get video mode!");
+        Logger::error("[GLFW] Failed to get video mode!");
         glfwTerminate();
         exit(-1);
     }
 
     // display info
-    spdlog::info("Current resolution: {}x{}", mode->width, mode->height);
-    spdlog::info("Refresh rate: {} Hz", mode->refreshRate);
+    Logger::info("Current resolution: {}x{}", mode->width, mode->height);
+    Logger::info("Refresh rate: {} Hz", mode->refreshRate);
 
     // gamepad info
     for (int jid = GLFW_JOYSTICK_1; jid <= GLFW_JOYSTICK_LAST; ++jid) {
         if (glfwJoystickPresent(jid)) {
             if (glfwJoystickIsGamepad(jid)) {
                 const char* name = glfwGetGamepadName(jid);
-                spdlog::info("Gamepad {}: {}", jid, name);
+                Logger::info("Gamepad {}: {}", jid, name);
             }
         }
     }

@@ -30,6 +30,8 @@ find_package(iconfont REQUIRED)
 find_package(promptfont REQUIRED)
 add_executable(Moonlight-Launcher
     Sources/main.cpp
+    Sources/logger.h
+    Sources/logger.cpp
     Sources/display.h
     Sources/display.cpp
     Sources/application.h

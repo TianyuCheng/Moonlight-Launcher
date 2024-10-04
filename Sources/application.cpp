@@ -4,7 +4,9 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+
 #include "font.h"
+#include "logger.h"
 #include "application.h"
 
 // Register the resource library
@@ -45,7 +47,7 @@ static void on_scale(GLFWwindow* window, float xscale, float yscale)
 
 static void on_error(int error, const char* description)
 {
-    spdlog::error("[GLFW] Error: {}\n", description);
+    Logger::error("[GLFW] Error: {}\n", description);
 }
 
 // ---------------------------------------------------------------------------
@@ -107,7 +109,7 @@ void Application::theme()
 void Application::setup()
 {
     if (!glfwInit()) {
-        spdlog::error("[GLFW] failed to initialize GLFW!");
+        Logger::error("[GLFW] failed to initialize GLFW!");
         exit(1);
     }
 
@@ -134,7 +136,7 @@ void Application::setup()
     ImGui::CreateContext();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     if (!ImGui_ImplOpenGL3_Init("#version 150")) {
-        spdlog::error("[ImGui] Failed to initialize OpenGL3!");
+        Logger::error("[ImGui] Failed to initialize OpenGL3!");
         glfwTerminate();
         exit(-1);
     }

@@ -2,7 +2,8 @@
 #define APPLICATION_H
 
 #include <GLFW/glfw3.h>
-#include <spdlog/spdlog.h>
+
+#include "logger.h"
 
 using uint = uint32_t;
 
@@ -29,7 +30,6 @@ struct Application
     bool        decorated = true;
     float       xscale    = 1.0f;
     float       yscale    = 1.0f;
-
 }; // end of class Application
 
 #endif // APPLICATION_H

@@ -2,6 +2,7 @@
 #include <DpiHelper.h>
 #include <spdlog/spdlog.h>
 
+#include "logger.h"
 #include "display.h"
 
 using uint = uint32_t;
@@ -52,7 +53,7 @@ std::vector<DisplayData> get_display_data()
 
     int flags = QDC_ONLY_ACTIVE_PATHS;
     if (false == DpiHelper::GetPathsAndModes(pathsV, modesV, flags)) {
-        spdlog::error("DpiHelper::GetPathsAndModes() failed");
+        Logger::error("DpiHelper::GetPathsAndModes() failed");
     }
 
     displayDataCache.resize(pathsV.size());
@@ -69,7 +70,7 @@ std::vector<DisplayData> get_display_data()
         deviceName.header.adapterId = adapterLUID;
         deviceName.header.id        = targetID;
         if (ERROR_SUCCESS != DisplayConfigGetDeviceInfo(&deviceName.header)) {
-            spdlog::error("DisplayConfigGetDeviceInfo() failed!");
+            Logger::error("DisplayConfigGetDeviceInfo() failed!");
         } else {
             std::wstring nameString = std::to_wstring(idx) + std::wstring(L". ") + deviceName.monitorFriendlyDeviceName;
             if (DISPLAYCONFIG_OUTPUT_TECHNOLOGY_INTERNAL == deviceName.outputTechnology) {
@@ -96,7 +97,7 @@ bool update_resolution(int width, int height)
 
     // get current display settings
     if (!EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &dm)) {
-        spdlog::error("Could not get current display settings!");
+        Logger::error("Could not get current display settings!");
         return false;
     }
 
@@ -110,11 +111,11 @@ bool update_resolution(int width, int height)
     LONG  result = ChangeDisplaySettings(&dm, flags);
 
     if (result != DISP_CHANGE_SUCCESSFUL) {
-        spdlog::error("Display resolution change failed.");
+        Logger::error("Display resolution change failed.");
         return false;
     }
 
-    spdlog::info("Display resolution changed to {}x{}.", width, height);
+    Logger::info("Display resolution changed to {}x{}.", width, height);
     return true;
 }
 
@@ -127,7 +128,7 @@ bool update_scale(float scale)
 
     bool success = DpiHelper::SetDPIScaling(displayDataCache[displayIndex].m_adapterId, displayDataCache[displayIndex].m_sourceID, dpiToSet);
     if (!success) {
-        spdlog::error("DpiHelper::SetDPIScaling() failed!");
+        Logger::error("DpiHelper::SetDPIScaling() failed!");
         return false;
     }
 
