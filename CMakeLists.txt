@@ -16,7 +16,8 @@ cmrc_add_resource_library(Font-Resources
     NAMESPACE fonts
     WHENCE ${PROJECT_SOURCE_DIR}/Assets/fonts
     Assets/fonts/Roboto-Regular.ttf
-    Assets/fonts/Font-Awesome.ttf)
+    Assets/fonts/Font-Awesome.ttf
+    Assets/fonts/Prompt-Font.ttf)
 set_target_properties(Font-Resources PROPERTIES FOLDER "Product")
 
 # project sources
@@ -26,6 +27,7 @@ find_package(imgui REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(SetDPI REQUIRED)
 find_package(iconfont REQUIRED)
+find_package(promptfont REQUIRED)
 add_executable(Moonlight-Launcher
     Sources/main.cpp
     Sources/display.h
@@ -33,7 +35,8 @@ add_executable(Moonlight-Launcher
     Sources/application.h
     Sources/application.cpp)
 target_link_libraries(Moonlight-Launcher PRIVATE Font-Resources)
-target_link_libraries(Moonlight-Launcher PRIVATE iconfont toml glfw imgui spdlog SetDPI)
+target_link_libraries(Moonlight-Launcher PRIVATE iconfont promptfont)
+target_link_libraries(Moonlight-Launcher PRIVATE toml glfw imgui spdlog SetDPI)
 set_target_properties(Moonlight-Launcher PROPERTIES FOLDER "Product")
 
 # project specific settings

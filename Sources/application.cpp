@@ -69,6 +69,7 @@ void Application::run()
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);
+
         glfwPollEvents();
     }
     cleanup();
@@ -206,8 +207,8 @@ void Application::gamepad()
             MAP_BUTTON(ImGuiKey_GamepadStart,     GLFW_GAMEPAD_BUTTON_START,        7);
             MAP_BUTTON(ImGuiKey_GamepadBack,      GLFW_GAMEPAD_BUTTON_BACK,         6);
             MAP_BUTTON(ImGuiKey_GamepadFaceLeft,  GLFW_GAMEPAD_BUTTON_X,            2);  // Xbox X, PS Square
-            MAP_BUTTON(ImGuiKey_GamepadFaceRight, GLFW_GAMEPAD_BUTTON_B,            1); // Xbox B, PS Circle
-            MAP_BUTTON(ImGuiKey_GamepadFaceUp,    GLFW_GAMEPAD_BUTTON_Y,            3);    // Xbox Y, PS Triangle
+            MAP_BUTTON(ImGuiKey_GamepadFaceRight, GLFW_GAMEPAD_BUTTON_B,            1);  // Xbox B, PS Circle
+            MAP_BUTTON(ImGuiKey_GamepadFaceUp,    GLFW_GAMEPAD_BUTTON_Y,            3);  // Xbox Y, PS Triangle
             MAP_BUTTON(ImGuiKey_GamepadFaceDown,  GLFW_GAMEPAD_BUTTON_A,            0);  // Xbox A, PS Cross
             MAP_BUTTON(ImGuiKey_GamepadDpadLeft,  GLFW_GAMEPAD_BUTTON_DPAD_LEFT,    13);
             MAP_BUTTON(ImGuiKey_GamepadDpadRight, GLFW_GAMEPAD_BUTTON_DPAD_RIGHT,   11);
@@ -231,8 +232,17 @@ void Application::gamepad()
 
 void Application::fonts()
 {
-    // for icon fonts
-    static const ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0}; // Will not be copied by AddFont* so keep in scope.
+    static const ImWchar icons_ranges[] = {
+        ICON_MIN_FA,
+        ICON_MAX_FA,
+        0,
+    };
+
+    static const ImWchar pmpts_ranges[] = {
+        PF_XBOX_LEFT_TRIGGER_HEX,
+        PF_KEYBOARD_Z_HEX,
+        0,
+    };
 
     ImFontConfig config;
     config.OversampleH          = 2;
@@ -246,6 +256,9 @@ void Application::fonts()
     ImFontConfig icon_cfg = config;
     icon_cfg.MergeMode    = true;
 
+    ImFontConfig pmpt_cfg = config;
+    pmpt_cfg.MergeMode    = true;
+
     auto fs = cmrc::fonts::get_filesystem();
 
     auto  text_font = fs.open(TEXT_FONT_FILE);
@@ -254,10 +267,14 @@ void Application::fonts()
     auto  icon_font = fs.open(ICON_FONT_FILE);
     void* icon_data = (char*)icon_font.begin();
 
+    auto  pmpt_font = fs.open(PMPT_FONT_FILE);
+    void* pmpt_data = (char*)pmpt_font.begin();
+
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->Clear();
     io.Fonts->AddFontFromMemoryTTF(text_data, text_font.size(), TEXT_FONT_SIZE * xscale, &main_cfg, io.Fonts->GetGlyphRangesDefault());
     io.Fonts->AddFontFromMemoryTTF(icon_data, icon_font.size(), ICON_FONT_SIZE * xscale, &icon_cfg, icons_ranges);
+    io.Fonts->AddFontFromMemoryTTF(pmpt_data, pmpt_font.size(), PMPT_FONT_SIZE * xscale, &pmpt_cfg, pmpts_ranges);
     io.Fonts->Build();
 
     ImGui_ImplOpenGL3_CreateFontsTexture();

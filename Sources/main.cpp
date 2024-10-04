@@ -167,7 +167,7 @@ void MyApp::init()
 
 void MyApp::tick()
 {
-    glfwFocusWindow(window);
+    // glfwFocusWindow(window);
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoResize;
     ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
@@ -424,45 +424,40 @@ void MyApp::render_launcher()
 
 void MyApp::render_helpmenu()
 {
-    static std::vector<std::pair<std::string, std::string>> keyboard_shortcuts = {
-        {"Next Tab", "<Tab>"},
-        {"Prev Tab", "<S-Tab>"},
-        {"Next Item", "<Down>"},
-        {"Prev Item", "<Up>"},
-        {"Select", "<Enter>"},
-        {"Exit", "<Esc>"},
+    // clang-format off
+    static std::vector<std::tuple<std::string, std::string, std::string>> shortcuts = {
+        {"Next Tab",  PF_KEYBOARD_TAB,                   PF_SONY_RIGHT_SHOULDER,    },
+        {"Prev Tab",  PF_KEYBOARD_SHIFT PF_KEYBOARD_TAB, PF_SONY_LEFT_SHOULDER,     },
+        {"Next Item", PF_KEYBOARD_DOWN,                  PF_DPAD_DOWN,              },
+        {"Prev Item", PF_KEYBOARD_UP,                    PF_DPAD_UP,                },
+        {"Select",    PF_KEYBOARD_ENTER,                 PF_SONY_A,                 },
+        {"Exit",      PF_KEYBOARD_ESCAPE,                PF_SONY_DUALSENSE_OPTIONS, },
     };
+    // clang-format on
 
-    static std::vector<std::pair<std::string, std::string>> gamepad_shortcuts = {
-        {"Next Tab", "<R1>"},
-        {"Prev Tab", "<L1>"},
-        {"Next Item", "<DPAD-Up>"},
-        {"Prev Item", "<DPAD-Down>"},
-        {"Select", "<X>"},
-        {"Exit", "<Start>"},
-    };
+    float width  = ImGui::GetContentRegionAvail().x - 16.0f;
+    float height = ImGui::GetContentRegionAvail().y;
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
+    if (ImGui::ListBoxHeader("#shortcuts", ImVec2(width, height))) {
+        if (ImGui::BeginTable("Shortcuts##table", 3)) {
+            ImGui::TableHeadersRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("Action");
+            ImGui::TableSetColumnIndex(1);
+            ImGui::Text("Keyboard");
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("Gamepad");
+            ImGui::TableNextRow();
+            ImGui::Separator();
 
-    if (ImGui::CollapsingHeader("Keyboard Shortcuts", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (ImGui::BeginTable("Keyboard Shortcuts##table", 2)) {
-            for (auto& row : keyboard_shortcuts) {
+            for (auto& row : shortcuts) {
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
-                ImGui::Text("%s", row.first.c_str());
+                ImGui::Text("%s", std::get<0>(row).c_str());
                 ImGui::TableSetColumnIndex(1);
-                ImGui::Text("%s", row.second.c_str());
-            }
-            ImGui::EndTable();
-        }
-    }
-
-    if (ImGui::CollapsingHeader("GamePad Shortcuts", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (ImGui::BeginTable("GamePad Shortcuts##table", 2)) {
-            for (auto& row : gamepad_shortcuts) {
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                ImGui::Text("%s", row.first.c_str());
-                ImGui::TableSetColumnIndex(1);
-                ImGui::Text("%s", row.second.c_str());
+                ImGui::Text("%s", std::get<1>(row).c_str());
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text("%s", std::get<2>(row).c_str());
             }
             ImGui::EndTable();
         }
@@ -499,6 +494,16 @@ int main(int argc, const char* argv[])
     // display info
     spdlog::info("Current resolution: {}x{}", mode->width, mode->height);
     spdlog::info("Refresh rate: {} Hz", mode->refreshRate);
+
+    // gamepad info
+    for (int jid = GLFW_JOYSTICK_1; jid <= GLFW_JOYSTICK_LAST; ++jid) {
+        if (glfwJoystickPresent(jid)) {
+            if (glfwJoystickIsGamepad(jid)) {
+                const char* name = glfwGetGamepadName(jid);
+                spdlog::info("Gamepad {}: {}", jid, name);
+            }
+        }
+    }
 
     // application
     MyApp app;
