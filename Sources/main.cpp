@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <fstream>
 #include <sstream>
 #include <imgui.h>
@@ -68,6 +69,8 @@ struct MyApp : public Application
         supported_display_settings = list_display_settings();
     }
 
+    void fit(uint width, uint height);
+
     void init();
     void tick() override;
 
@@ -94,6 +97,25 @@ struct MyApp : public Application
     int tab_index = 0;
     int tab_count = 5;
 };
+
+void MyApp::fit(uint width, uint height)
+{
+    for (auto& display : preset_display_settings) {
+        if (display.width == width && display.height == height) {
+            update_resolution(display.width, display.height);
+            update_scale(display.scale);
+            return;
+        }
+    }
+
+    for (auto& display : supported_display_settings) {
+        if (display.width == width && display.height == height) {
+            update_resolution(display.width, display.height);
+            update_scale(display.scale);
+            return;
+        }
+    }
+}
 
 void MyApp::init()
 {
@@ -486,6 +508,17 @@ void MyApp::render_logs()
     }
 }
 
+std::optional<int> read_env_vars_as_int(const char* env)
+{
+    size_t required_size = 0;
+    getenv_s(&required_size, nullptr, 0, env);
+    if (required_size == 0) return std::nullopt;
+
+    std::string value(required_size, '\0');
+    getenv_s(&required_size, &value[0], required_size, env);
+    return std::stoi(value.c_str());
+}
+
 #ifdef BUILD_WINDOWS_APPLICATION
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 #else
@@ -541,11 +574,24 @@ int main(int argc, const char* argv[])
         }
     }
 
+    // configure client window extent
+    uint client_width  = mode->width;
+    uint client_height = mode->height;
+
+    // check sunshine client extent
+    auto requested_width  = read_env_vars_as_int("SUNSHINE_CLIENT_WIDTH");
+    auto requested_height = read_env_vars_as_int("SUNSHINE_CLIENT_HEIGHT");
+    if (requested_width.has_value() && requested_height.has_value()) {
+        client_width  = requested_width.value();
+        client_height = requested_height.value();
+    }
+
     // application
     MyApp app;
-    app.width     = mode->width;
-    app.height    = mode->height;
+    app.width     = client_width;
+    app.height    = client_height;
     app.decorated = false;
     app.title     = "Moonlight Launcher";
+    app.fit(client_width, client_height);
     app.run();
 }

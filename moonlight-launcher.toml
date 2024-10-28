@@ -41,6 +41,13 @@ width = 2388
 height = 1668
 
 [[resolutions]]
+name = "iPad/A1670"
+freq = 60
+scale = 1.5
+width = 2732
+height = 2048
+
+[[resolutions]]
 name = "iPhone 13 Pro"
 freq = 60
 scale = 1.5
