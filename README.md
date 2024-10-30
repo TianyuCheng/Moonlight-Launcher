@@ -13,8 +13,12 @@ a more publicly known game launcher.
 
 Since this tool is created to be used on both PC and TV, inputs from mouse/keyboard/gamepads are all supported.
 
-Note that both resolutions and applications are configurable. Users can take a look at **moonlight-launcher.toml**
-for an example.
+Note that both resolutions and applications are configurable.
+During the first launch, a default configuration file will be stored at
+```
+~/AppData/Roaming/Moonlight-Launcher/moonlight-launcher.toml
+```
+Users can modify the toml configuration file.
 
 Features
 --------

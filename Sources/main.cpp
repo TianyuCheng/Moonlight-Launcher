@@ -7,12 +7,50 @@
 #define TOML_EXCEPTIONS 0
 #include <toml++/toml.hpp>
 
+#include "path.h"
 #include "font.h"
 #include "logger.h"
 #include "display.h"
 #include "application.h"
 
+#define APP_NAME "Moonlight-Launcher"
+
 static std::shared_ptr<RingBufferSink> logs;
+
+void create_default_config_file(const std::filesystem::path& path)
+{
+    const std::string content = R"""([[resolutions]]
+name = "HD"
+freq = 60
+scale = 1.5
+width = 1920
+height = 1080
+
+[[resolutions]]
+name = "2K"
+freq = 60
+scale = 1.5
+width = 2560
+height = 1440
+
+[[resolutions]]
+name = "4K"
+freq = 60
+scale = 1.5
+width = 3840
+height = 2160
+
+[[apps]]
+name = "CMD"
+elevated = false
+commands = """
+start "" "cmd.exe"
+""")""";
+
+    std::ofstream file(path, std::ios::out);
+    file << content;
+    file.close();
+}
 
 struct AppLauncher
 {
@@ -31,12 +69,15 @@ struct AppLauncher
 
     void prepare()
     {
-        auto scriptfile = std::filesystem::current_path() / script;
-        // if (std::filesystem::exists(scriptfile)) return;
+        auto configpath = std::filesystem::path(get_app_config_path(APP_NAME).value());
+        auto scriptfile = configpath / script;
+        Logger::info("script: {}", scriptfile.string());
 
         std::ofstream of(scriptfile, std::ios::out);
         of << commands;
         of.close();
+
+        script = scriptfile.string();
     }
 
     void execute()
@@ -119,16 +160,32 @@ void MyApp::fit(uint width, uint height)
 
 void MyApp::init()
 {
-    auto config_file = std::filesystem::current_path() / "moonlight-launcher.toml";
+    auto app_config_path = get_app_config_path(APP_NAME);
+    if (!app_config_path.has_value()) {
+        Logger::info("Config director is not available!");
+        return;
+    }
+
+    // create config directory is necessary
+    if (!std::filesystem::exists(app_config_path.value())) {
+        std::filesystem::create_directory(app_config_path.value());
+    }
+
+    // read config file
+    auto config_path = std::filesystem::path(app_config_path.value());
+    auto config_file = config_path / "moonlight-launcher.toml";
+    Logger::info("Loading configuration file at:");
+    Logger::info("{}", config_file.string());
     if (!std::filesystem::exists(config_file)) {
         Logger::info("Toml config file does not exist!");
-        return;
+        Logger::info("Creating default config file!");
+        create_default_config_file(config_file);
     }
 
     toml::parse_result result = toml::parse_file(config_file.c_str());
     if (!result) {
         Logger::error("Failed to parse toml config file!");
-        exit(1);
+        return;
     }
 
     toml::table table = std::move(result).table();
@@ -146,19 +203,19 @@ void MyApp::init()
         // sanity check
         if (scale < 1.0f) {
             Logger::error("[resolutions] expect scale >= 1.0f!");
-            exit(1);
+            return;
         }
 
         // sanity check
         if (width <= 0 || height <= 0) {
             Logger::error("[resolutions] expect width/height > 0!");
-            exit(1);
+            return;
         }
 
         // sanity check
         if (freq <= 0) {
             Logger::error("[resolutions] expect frequency > 0!");
-            exit(1);
+            return;
         }
 
         preset_display_settings.push_back(
@@ -176,13 +233,13 @@ void MyApp::init()
         // sanity check
         if (name.empty()) {
             Logger::error("[apps] expect non-empty name!");
-            exit(1);
+            return;
         }
 
         // sanity check
         if (commands.empty()) {
-            Logger::error("[apps] expect non-empty commands!");
-            exit(1);
+            Logger::error("[apps] expect non-empty commands for {}!", name);
+            return;
         }
 
         auto script = name + ".bat";
@@ -234,7 +291,8 @@ bool MyApp::is_prev_tab_pressed()
 
 bool MyApp::is_exit_pressed()
 {
-    return ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_GamepadStart));
+    return ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape)) ||
+           (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_GamepadStart)) && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_GamepadBack)));
 }
 
 bool MyApp::is_logger_pressed()
@@ -462,12 +520,12 @@ void MyApp::render_helpmenu()
 {
     // clang-format off
     static std::vector<std::tuple<std::string, std::string, std::string>> shortcuts = {
-        {"Next Tab",  PF_KEYBOARD_TAB,                   PF_SONY_RIGHT_SHOULDER,    },
-        {"Prev Tab",  PF_KEYBOARD_SHIFT PF_KEYBOARD_TAB, PF_SONY_LEFT_SHOULDER,     },
-        {"Next Item", PF_KEYBOARD_DOWN,                  PF_DPAD_DOWN,              },
-        {"Prev Item", PF_KEYBOARD_UP,                    PF_DPAD_UP,                },
-        {"Select",    PF_KEYBOARD_ENTER,                 PF_SONY_A,                 },
-        {"Exit",      PF_KEYBOARD_ESCAPE,                PF_SONY_DUALSENSE_OPTIONS, },
+        {"Next Tab",  PF_KEYBOARD_TAB,                   PF_SONY_RIGHT_SHOULDER,        },
+        {"Prev Tab",  PF_KEYBOARD_SHIFT PF_KEYBOARD_TAB, PF_SONY_LEFT_SHOULDER,         },
+        {"Next Item", PF_KEYBOARD_DOWN,                  PF_DPAD_DOWN,                  },
+        {"Prev Item", PF_KEYBOARD_UP,                    PF_DPAD_UP,                    },
+        {"Select",    PF_KEYBOARD_ENTER,                 PF_SONY_A,                     },
+        {"Exit",      PF_KEYBOARD_ESCAPE,                PF_SONY_OPTIONS PF_SONY_SHARE, },
     };
     // clang-format on
 
@@ -498,6 +556,7 @@ void MyApp::render_helpmenu()
             }
             ImGui::EndTable();
         }
+        ImGui::ListBoxFooter();
     }
 }
 
@@ -533,7 +592,7 @@ int main(int argc, const char* argv[])
     auto custom = std::make_shared<RingBufferSink>(512);
     custom->set_level(loglevel);
 
-    auto logger = std::make_shared<spdlog::logger>("Moonlight-Launcher", spdlog::sinks_init_list{console, custom});
+    auto logger = std::make_shared<spdlog::logger>(APP_NAME, spdlog::sinks_init_list{console, custom});
     Logger::set_logger(logger);
 
     // save custom sink
